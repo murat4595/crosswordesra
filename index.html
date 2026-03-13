@@ -341,6 +341,7 @@ const ROWS = maxRow + 1;
 
 /* Build cell map */
 const cellMap = {};  // "col,row" -> { answer, number, words: [{wordIdx, letterIdx}] }
+const wordMistakes = new Array(WORDS.length).fill(0); // Track mistakes per word
 
 WORDS.forEach((w, wi) => {
     for (let i = 0; i < w.word.length; i++) {
@@ -509,8 +510,33 @@ function onInput(e, key) {
         inp.value = '';
         cellEls[key].classList.add('flash-wrong');
         setTimeout(() => cellEls[key].classList.remove('flash-wrong'), 450);
-        if (selectedWord !== null) revealRandomLetter(selectedWord);
+        
+        if (selectedWord !== null) {
+            wordMistakes[selectedWord]++;
+            if (wordMistakes[selectedWord] >= 5) {
+                revealEntireWord(selectedWord);
+            } else {
+                revealRandomLetter(selectedWord);
+            }
+        }
     }
+}
+
+/* Reveal entire word */
+function revealEntireWord(wi) {
+    const w = WORDS[wi];
+    for (let i = 0; i < w.word.length; i++) {
+        const c = w.dir === 'across' ? w.col + i : w.col;
+        const r = w.dir === 'across' ? w.row : w.row + i;
+        const k = c + ',' + r;
+        const cellInp = cellEls[k].querySelector('.cell-input');
+        if ((cellInp.value || '').toUpperCase() !== cellMap[k].answer) {
+            cellInp.value = cellMap[k].answer;
+            cellEls[k].classList.remove('incorrect', 'flash-wrong');
+            cellEls[k].classList.add('correct', 'revealed');
+        }
+    }
+    checkCompletion();
 }
 
 /* Reveal one random unrevealed letter in the given word */
@@ -619,6 +645,7 @@ function moveDir(key, dc, dr) {
 /* Clear Grid */
 function clearGrid() {
     playSound('click');
+    wordMistakes.fill(0); // Reset mistake counters
     for (const key in cellMap) {
         const inp = cellEls[key].querySelector('.cell-input');
         inp.value = '';
